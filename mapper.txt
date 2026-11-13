@@ -1,0 +1,33 @@
+// Mapper encargado de traducir entre el Agregado puro del Dominio y el registro de Base de Datos
+MAPPER ArticuloPersistenceMapper {
+
+    // 1. Traducción hacia afuera: Convierte el objeto rico del dominio en datos planos para guardar
+    FUNCION haciaPersistencia(articulo: Articulo) -> RegistroTablaArticulo {
+        // Desempaquetamos cada Value Object para obtener su tipo primitivo (Long, String, Boolean)
+        idPlano = articulo.getId().getValue()
+        autorPlano = articulo.getAutorId().getValue()
+        tituloPlano = articulo.getTitulo().getValue()
+        contenidoPlano = articulo.getContenido()
+        estaRechazado = articulo.esRechazado()
+
+        RETORNAR NUEVO RegistroTablaArticulo(idPlano, autorPlano, tituloPlano, contenidoPlano, estaRechazado)
+    }
+
+    // 2. Traducción hacia adentro: Reconstruye el Agregado desde una fila leída de la base de datos
+    FUNCION haciaDominio(registro: RegistroTablaArticulo) -> Articulo {
+        // Usamos la fábrica del dominio para garantizar que los Value Objects se validen al reconstruirse
+        articulo = ArticuloFactory.crearArticulo(
+            registro.id,
+            registro.autorId,
+            registro.titulo,
+            registro.contenido
+        )
+
+        // Si en la base de datos figuraba como rechazado, restauramos su estado interno
+        SI registro.estaRechazado ES VERDADERO ENTONCES
+            articulo.rechazar("Estado restaurado desde persistencia")
+        FIN SI
+
+        RETORNAR articulo
+    }
+}
